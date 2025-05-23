@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>开放版积分管理系统</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        button { padding: 5px 10px; margin: 2px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>开放积分管理系统</h1>
+
+    <!-- 操作区 -->
+    <div>
+        <button onclick="showEditForm()">添加客户</button>
+        <button onclick="exportData()">导出数据</button>
+        <input type="file" id="importFile" onchange="importData()" style="display:none;">
+        <label for="importFile" style="cursor: pointer;">导入数据</label>
+    </div>
+
+    <!-- 数据表格 -->
+    <table>
+        <thead>
+            <tr>
+                <th>姓名</th>
+                <th>手机号</th>
+                <th>积分</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="customerList"></tbody>
+    </table>
+
+    <!-- 编辑表单 -->
+    <div id="editForm" style="display: none; margin-top: 20px;">
+        <input type="text" id="editName" placeholder="姓名">
+        <input type="text" id="editPhone" placeholder="手机号">
+        <input type="number" id="editPoints" placeholder="积分">
+        <button onclick="saveCustomer()">保存</button>
+        <button onclick="closeEditForm()">取消</button>
+    </div>
+
+<script>
+// 初始化数据
+let customers = JSON.parse(localStorage.getItem('customers') || '[]');
+renderTable();
+
+// 核心功能函数
+function renderTable() {
+    const tbody = document.getElementById('customerList');
+    tbody.innerHTML = customers.map(customer => `
+        <tr>
+            <td>${customer.name}</td>
+            <td>${customer.phone}</td>
+            <td>${customer.points}</td>
+            <td>
+                <button onclick="editCustomer('${customer.phone}')">编辑</button>
+                <button onclick="deleteCustomer('${customer.phone}')">删除</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function saveCustomer() {
+    const customer = {
+        name: document.getElementById('editName').value,
+        phone: document.getElementById('editPhone').value,
+        points: parseInt(document.getElementById('editPoints').value)
+    };
+
+    const index = customers.findIndex(c => c.phone === customer.phone);
+    if (index >= 0) {
+        customers[index] = customer;
+    } else {
+        customers.push(customer);
+    }
+
+    localStorage.setItem('customers', JSON.stringify(customers));
+    closeEditForm();
+    renderTable();
+}
+
+function deleteCustomer(phone) {
+    customers = customers.filter(c => c.phone !== phone);
+    localStorage.setItem('customers', JSON.stringify(customers));
+    renderTable();
+}
+
+// 辅助功能
+function showEditForm() {
+    document.getElementById('editForm').style.display = 'block';
+    document.getElementById('editName').value = '';
+    document.getElementById('editPhone').value = '';
+    document.getElementById('editPoints').value = '';
+}
+
+function closeEditForm() {
+    document.getElementById('editForm').style.display = 'none';
+}
+
+function editCustomer(phone) {
+    const customer = customers.find(c => c.phone === phone);
+    document.getElementById('editName').value = customer.name;
+    document.getElementById('editPhone').value = customer.phone;
+    document.getElementById('editPoints').value = customer.points;
+    document.getElementById('editForm').style.display = 'block';
+}
+
+function exportData() {
+    const dataStr = JSON.stringify(customers);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'customers.json';
+    a.click();
+}
+
+function importData() {
+    const file = document.getElementById('importFile').files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        customers = JSON.parse(e.target.result);
+        localStorage.setItem('customers', JSON.stringify(customers));
+        renderTable();
+    }
+    reader.readAsText(file);
+}
+</script>
+</body>
+</html>
