@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>积分管理系统（只读版）</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        button { padding: 5px 10px; margin: 2px; cursor: pointer; }
+        .admin-only { display: none; } /* 默认隐藏管理员操作 */
+        #adminLogin { position: fixed; top: 10px; right: 10px; }
+    </style>
+</head>
+<body>
+    <h1>客户积分系统</h1>
+
+    <!-- 管理员登录 -->
+    <div id="adminLogin">
+        <button onclick="showAdminPanel()">管理员登录</button>
+    </div>
+
+    <!-- 搜索功能 -->
+    <div>
+        <input type="text" id="searchInput" placeholder="输入手机号或姓名搜索">
+        <button onclick="searchCustomer()">搜索</button>
+    </div>
+
+    <!-- 数据表格（普通用户可见） -->
+    <table>
+        <thead>
+            <tr>
+                <th>姓名</th>
+                <th>手机号</th>
+                <th>积分</th>
+                <th class="admin-only">操作</th>
+            </tr>
+        </thead>
+        <tbody id="customerList"></tbody>
+    </table>
+
+    <!-- 编辑表单（仅管理员可见） -->
+    <div id="editForm" class="admin-only" style="display: none;">
+        <input type="text" id="editName" placeholder="姓名">
+        <input type="text" id="editPhone" placeholder="手机号" readonly>
+        <input type="number" id="editPoints" placeholder="积分">
+        <button onclick="saveCustomer()">保存</button>
+        <button onclick="closeEditForm()">取消</button>
+    </div>
+
+<script>
+// 配置项
+const ADMIN_PASSWORD = "admin123"; // 管理员密码（可修改）
+
+// 初始化数据
+let customers = JSON.parse(localStorage.getItem('customers') || '[]');
+let isAdmin = localStorage.getItem('isAdmin') === 'true'; // 读取管理员状态
+updateUI();
+
+// ================= 权限控制 =================
+function updateUI() {
+    // 控制管理员操作按钮的显示
+    document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = isAdmin ? 'table-cell' : 'none';
+    });
+    document.getElementById('editForm').style.display = 'none';
+}
+
+function showAdminPanel() {
+    const password = prompt('请输入管理员密码：');
+    if (password === ADMIN_PASSWORD) {
+        isAdmin = true;
+        localStorage.setItem('isAdmin', 'true');
+        updateUI();
+    } else {
+        alert('密码错误！');
+    }
+}
+
+// ================= 核心功能 =================
+function renderTable(data = customers) {
+    const tbody = document.getElementById('customerList');
+    tbody.innerHTML = data.map(customer => `
+        <tr>
+            <td>${customer.name}</td>
+            <td>${customer.phone}</td>
+            <td>${customer.points}</td>
+            <td class="admin-only">
+                <button onclick="editCustomer('${customer.phone}')">编辑</button>
+                <button onclick="deleteCustomer('${customer.phone}')">删除</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function searchCustomer() {
+    const keyword = document.getElementById('searchInput').value.toLowerCase();
+    const result = customers.filter(c => 
+        c.phone.includes(keyword) || c.name.toLowerCase().includes(keyword)
+    );
+    renderTable(result);
+}
+
+// ================= 管理员操作 =================
+function saveCustomer() {
+    if (!isAdmin) return alert('无权限操作！');
+    
+    const customer = {
+        name: document.getElementById('editName').value,
+        phone: document.getElementById('editPhone').value,
+        points: parseInt(document.getElementById('editPoints').value)
+    };
+
+    const index = customers.findIndex(c => c.phone === customer.phone);
+    if (index >= 0) {
+        customers[index] = customer;
+    }
+    
+    localStorage.setItem('customers', JSON.stringify(customers));
+    closeEditForm();
+    renderTable();
+}
+
+function deleteCustomer(phone) {
+    if (!isAdmin) return alert('无权限操作！');
+    customers = customers.filter(c => c.phone !== phone);
+    localStorage.setItem('customers', JSON.stringify(customers));
+    renderTable();
+}
+
+// ================= 辅助函数 =================
+function editCustomer(phone) {
+    if (!isAdmin) return;
+    const customer = customers.find(c => c.phone === phone);
+    document.getElementById('editName').value = customer.name;
+    document.getElementById('editPhone').value = customer.phone;
+    document.getElementById('editPoints').value = customer.points;
+    document.getElementById('editForm').style.display = 'block';
+}
+
+function closeEditForm() {
+    document.getElementById('editForm').style.display = 'none';
+}
+
+// 初始化渲染
+renderTable();
+</script>
+</body>
+</html>
